@@ -6,13 +6,17 @@ from django.contrib.auth import authenticate
 from django.core.mail import send_mail
 import random
 
+def generate_otp():
+    otp_code = str(random.randint(100000, 999999))
+    return otp_code
+
 class UserRegistrationView(APIView):
     def post(self, request, format=None):
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():   
             user = serializer.save()
             #Generate otp and save it
-            otp = str(random.randint(100000, 999999))
+            otp = generate_otp()
             user.save()
             OTP.objects.create(user=user, otp=otp)
             # Send an email with the verification code
@@ -23,8 +27,10 @@ class UserRegistrationView(APIView):
 
             send_mail(subject, message, from_email, recipient_list, fail_silently=False)
             return Response({'msg':'User registered successfully. OTP has been sent to your email for verification.'}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+            # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)    
+        else:
+            raise serializers.ValidationError(serializer.errors)
+        
 class VerifyEmailView(APIView):
      def post(self, request, format=None):
         serializer = VerifyEmailSerializer(data=request.data)
