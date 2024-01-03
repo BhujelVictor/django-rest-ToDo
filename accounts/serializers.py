@@ -1,25 +1,31 @@
 from rest_framework.response import Response
-from rest_framework import status
 from rest_framework import serializers
-from accounts.models import User
+from accounts.models import User, OTP
 from datetime import timedelta
 from django.utils import timezone
-class UserRegistrationSerializer(serializers.ModelSerializer):
-    password2 = serializers.CharField(style={'input_type':'password'}, write_only=True)
+
+class OTPSerializer(serializers.ModelSerializer):
     class Meta:
-        # For confirm password field in Registration Request
+        model = OTP
+        fields = ('user', 'otp', 'otp_created_at')
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    # For confirm password field in Registration Request
+    confirm_password = serializers.CharField(style={'input_type':'password'}, write_only=True)
+    class Meta:
         model = User
-        fields = ['email','name','password','password2']
+        fields = ['email','name','password','confirm_password']
+        # passed as write_only to prevent serialization of password for security, only to be used to avoid serialization of data
         extra_kwargs ={
             'password': {'write_only':True}
         }
-    # password and confirm password2 validation
-    def validate(self, attrs):
-        password = attrs.get('password')
-        password2 = attrs.get('password2')
-        if password != password2:
+    # password and confirm confirm_password validation
+    def validate(self, data):
+        password = data.get('password')
+        confirm_password = data.get('confirm_password')
+        if password != confirm_password:
             raise serializers.ValidationError("Passwords do not match")
-        return attrs
+        return data
 
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
@@ -30,25 +36,31 @@ class VerifyEmailSerializer(serializers.Serializer):
     class Meta:
         fields = ['otp', 'email']
     
-    def validate(self, attrs):
-        email = attrs.get('email')
-        OTP = attrs.get('otp')
+    def validate(self, data):
+        email = data.get('email')
+        otp = data.get('otp')
         #Checking if email exists or not
         if User.objects.filter(email=email).exists():
             user = User.objects.get(email=email)
-            otp_expiry_time = user.otp_created_at + timedelta(minutes=5)  
-            #otp expires if it preceeds 5 min
-            if timezone.now() > otp_expiry_time:
-                raise serializers.ValidationError('OTP has expired')
-            #verify otp
-            if not user.otp == OTP :
-                raise serializers.ValidationError('OTP does not match')
+            #Checking for otp record
+            try:
+                otp_record = OTP.objects.get(user=user, otp=otp, otp_created_at__gte=timezone.now() - timedelta(minutes=5))
+            except OTP.DoesNotExist:
+                raise serializers.ValidationError('OTP does not match or has timed out')
+
+            otp_record.delete()
+            user.is_verified = True
+            user.save()
+            
         else:
             raise serializers.ValidationError('Email does not exist')
-        user.is_verified = True
-        user.otp = None
-        user.save()
-        return attrs
+        
+        return data
+    
+class ResendVerificationCodeSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=255)
+    class Meta:
+        fields = ['email', 'otp']
     
 class UserLoginSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(max_length=255)

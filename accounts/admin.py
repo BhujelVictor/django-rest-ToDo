@@ -21,7 +21,7 @@ class UserModelAdmin(BaseUserAdmin):
             None,
             {
                 "classes": ["wide"],
-                "fields": ["email", "name", "is_verified", "password1", "password2"],
+                "fields": ["email", "name", "is_verified", "password", "confirm_password"],
             },
         ),
     ]
