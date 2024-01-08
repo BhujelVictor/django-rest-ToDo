@@ -4,20 +4,17 @@ from rest_framework.views import APIView
 from accounts.serializers import *
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
-import random
+from accounts.services import GenOTP # for OTP generation
 
-def generate_otp():
-    otp_code = str(random.randint(100000, 999999))
-    return otp_code
 
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 class UserRegistrationView(APIView):
     def post(self, request, format=None):
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():   
             user = serializer.save()
             #Generate otp and save it
-            otp = generate_otp()
-            user.save()
+            otp = GenOTP.generate_otp()
             OTP.objects.create(user=user, otp=otp)
             # Send an email with the verification code
             subject = 'Activate your account'
@@ -51,8 +48,7 @@ class ResendVerificationCodeView(APIView):
             if user.is_verified:
                 return Response({'msg': 'User is already verified'}, status=status.HTTP_400_BAD_REQUEST)
 
-            otp = str(random.randint(100000, 999999))
-            OTP.otp_created_at = timezone.now()
+            otp = GenOTP.generate_otp()
             OTP.objects.create(user=user, otp=otp)
 
             # Resend an email with the new verification code

@@ -1,9 +1,3 @@
-# Byte-compiled / optimized / DLL files
-
-__pycache__/
-**/__pycache__/
-*.py[cod]
-*$py.class
 
 # Local development settings
 .env
@@ -27,6 +21,6 @@ db.sqlite3
 
 # Ignore pycache directories
 __pycache__/
-
+**/__pycache__/
 # Ignore compiled Python files
 *.pyc
