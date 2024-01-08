@@ -2,12 +2,12 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 from accounts.serializers import *
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, login, logout
 from django.core.mail import send_mail
 from accounts.services import GenOTP # for OTP generation
-
-
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from accounts.authentications import CustomEmailBackend
+from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 class UserRegistrationView(APIView):
     def post(self, request, format=None):
         serializer = UserRegistrationSerializer(data=request.data)
@@ -36,6 +36,7 @@ class VerifyEmailView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ResendVerificationCodeView(APIView):
+    permission_classes = [IsAuthenticated] # testing
     def post(self, request, format=None):
         serializer = ResendVerificationCodeSerializer(data=request.data)
         if serializer.is_valid():
@@ -63,18 +64,24 @@ class ResendVerificationCodeView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserLoginView(APIView):
+    permission_classes = [AllowAny]
     def post(self, request, format=None):
         serializer = UserLoginSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.data.get('email')
             password = serializer.data.get('password')
-            user = User.objects.get(email=email)
-            if user.is_verified == True:
-                user = authenticate(email=email,password=password)
-            else:
-                return Response({'msg':{'Your email is not verified'}}, status=status.HTTP_400_BAD_REQUEST)
+            
+            user = CustomEmailBackend().authenticate(request, email=email, password=password)
+            
             if user is not None:
+                login(request, user)
                 return Response({'msg':{'Login Success'}}, status=status.HTTP_200_OK)
             else:
                 return Response({'errors':{'Email or Password is not Valid'}}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class UserLogoutView(APIView):
+    def post(self, request, format=None):
+        logout(request)
+
+        return Response({'msg': "Logout Success"}, status=status.HTTP_200_OK)

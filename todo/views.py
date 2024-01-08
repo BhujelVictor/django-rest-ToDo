@@ -4,13 +4,12 @@ from rest_framework import status
 from rest_framework.views import APIView
 from .serializers import TaskSerializer, TaskListSerializer
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+
 
 class HomeAPIView(APIView):
-    authentication_classes = [SessionAuthentication, BasicAuthentication]
     permission_classes = [IsAuthenticated]
     
-    def get(self):
+    def get(self, request, format=None):
         urls = {
             'List':'list/',
             'Detail':'detail/<int:id>',
