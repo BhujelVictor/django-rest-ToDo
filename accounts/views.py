@@ -2,12 +2,14 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 from accounts.serializers import *
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from django.core.mail import send_mail
 from accounts.services import GenOTP # for OTP generation
 from accounts.authentications import CustomEmailBackend
 from rest_framework.permissions import AllowAny
 from rest_framework.permissions import IsAuthenticated
+
+
 class UserRegistrationView(APIView):
     def post(self, request, format=None):
         serializer = UserRegistrationSerializer(data=request.data)
@@ -36,7 +38,6 @@ class VerifyEmailView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ResendVerificationCodeView(APIView):
-    permission_classes = [IsAuthenticated] # testing
     def post(self, request, format=None):
         serializer = ResendVerificationCodeSerializer(data=request.data)
         if serializer.is_valid():

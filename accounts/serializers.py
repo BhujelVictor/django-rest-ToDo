@@ -1,4 +1,3 @@
-from rest_framework.response import Response
 from rest_framework import serializers
 from accounts.models import User, OTP
 from datetime import timedelta
@@ -40,18 +39,16 @@ class VerifyEmailSerializer(serializers.Serializer):
         email = data.get('email')
         otp = data.get('otp')
         #Checking if email exists or not
-        if User.objects.filter(email=email).exists():
-            user = User.objects.get(email=email)
+        user = User.objects.get(email=email)
+        if user is not None:
             #Checking for otp record
             try:
                 otp_record = OTP.objects.get(user=user, otp=otp, otp_created_at__gte=timezone.now() - timedelta(minutes=5))
+                otp_record.delete()
+                user.is_verified = True 
+                user.save()
             except OTP.DoesNotExist:
-                raise serializers.ValidationError('OTP does not match or has timed out')
-
-            otp_record.delete()
-            user.is_verified = True
-            user.save()
-            
+                raise serializers.ValidationError('OTP does not match or has timed out')   
         else:
             raise serializers.ValidationError('Email does not exist')
         
